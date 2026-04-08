@@ -35,6 +35,7 @@ export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  console.log("in api fetch", path, options);
   const { signal: userSignal, ...rest } = options;
   const url = `${API_BASE_URL}${path}`;
   const timeoutSignal = AbortSignal.timeout(DEFAULT_TIMEOUT_MS);
@@ -48,6 +49,8 @@ export async function apiFetch<T>(
     ...rest,
     signal,
   });
+
+  console.log(res);
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
