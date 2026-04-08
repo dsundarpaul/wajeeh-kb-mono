@@ -35,10 +35,10 @@ export default function CategoryCard({
             {articleCount} {articleCount === 1 ? "article" : "articles"}
           </span>
         )}
-        {category.children.length > 0 && (
+        {(category.children ?? []).length > 0 && (
           <span>
-            {category.children.length} subcategor
-            {category.children.length === 1 ? "y" : "ies"}
+            {(category.children ?? []).length} subcategor
+            {(category.children ?? []).length === 1 ? "y" : "ies"}
           </span>
         )}
         <ChevronRight className="ml-auto h-4 w-4 text-neutral-300 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-brand-500 dark:text-neutral-600" />

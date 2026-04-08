@@ -1,5 +1,26 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3003";
 
+const DEFAULT_TIMEOUT_MS = 15_000;
+
+function mergeAbortSignals(
+  userSignal: AbortSignal | undefined,
+  timeoutSignal: AbortSignal,
+): AbortSignal {
+  if (!userSignal) return timeoutSignal;
+  if (typeof AbortSignal.any === "function") {
+    return AbortSignal.any([userSignal, timeoutSignal]);
+  }
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (userSignal.aborted || timeoutSignal.aborted) {
+    controller.abort();
+  } else {
+    userSignal.addEventListener("abort", abort, { once: true });
+    timeoutSignal.addEventListener("abort", abort, { once: true });
+  }
+  return controller.signal;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -14,14 +35,18 @@ export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  const { signal: userSignal, ...rest } = options;
   const url = `${API_BASE_URL}${path}`;
+  const timeoutSignal = AbortSignal.timeout(DEFAULT_TIMEOUT_MS);
+  const signal = mergeAbortSignals(userSignal ?? undefined, timeoutSignal);
 
   const res = await fetch(url, {
     headers: {
       "Content-Type": "application/json",
-      ...(options.headers as Record<string, string>),
+      ...(rest.headers as Record<string, string>),
     },
-    ...options,
+    ...rest,
+    signal,
   });
 
   if (!res.ok) {

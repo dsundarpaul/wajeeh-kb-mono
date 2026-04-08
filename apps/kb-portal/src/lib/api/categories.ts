@@ -6,12 +6,37 @@ import type {
 } from "@/types/api";
 import { apiFetch } from "./client";
 
+function ensureCategoryTreeChildren(
+  nodes: KnowledgeCategoryTreeNode[],
+): KnowledgeCategoryTreeNode[] {
+  return nodes.map((node) => ({
+    ...node,
+    children: ensureCategoryTreeChildren(
+      Array.isArray(node.children) ? node.children : [],
+    ),
+  }));
+}
+
+function isVercelBuildWithoutApiUrl(): boolean {
+  return (
+    process.env.VERCEL === "1" &&
+    !process.env.NEXT_PUBLIC_API_URL?.trim()
+  );
+}
+
 export async function fetchCategoryTree(): Promise<
   KnowledgeCategoryTreeNode[]
 > {
-  return apiFetch<KnowledgeCategoryTreeNode[]>("/categories/tree", {
-    // next: { revalidate: 3600 },
-  });
+  if (isVercelBuildWithoutApiUrl()) return [];
+  try {
+    const raw = await apiFetch<KnowledgeCategoryTreeNode[]>("/categories/tree", {
+      // next: { revalidate: 3600 },
+    });
+    if (!Array.isArray(raw)) return [];
+    return ensureCategoryTreeChildren(raw);
+  } catch {
+    return [];
+  }
 }
 
 export async function fetchCategoriesFlat(): Promise<KnowledgeCategory[]> {

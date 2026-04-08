@@ -6,12 +6,7 @@ import { KnowledgeCategoryTreeNode } from "@/types/api";
 export const revalidate = 3600;
 
 export default async function HomePage() {
-  let tree: KnowledgeCategoryTreeNode[];
-  try {
-    tree = await fetchCategoryTree();
-  } catch {
-    tree = [];
-  }
+  const tree: KnowledgeCategoryTreeNode[] = await fetchCategoryTree();
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
