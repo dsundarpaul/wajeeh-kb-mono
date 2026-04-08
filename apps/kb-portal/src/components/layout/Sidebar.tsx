@@ -12,21 +12,6 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-function buildCategoryPath(
-  nodes: KnowledgeCategoryTreeNode[],
-  parentPath = "",
-): { node: KnowledgeCategoryTreeNode; path: string }[] {
-  const result: { node: KnowledgeCategoryTreeNode; path: string }[] = [];
-  for (const n of nodes) {
-    const path = parentPath ? `${parentPath}/${n.slug}` : `/${n.slug}`;
-    result.push({ node: n, path });
-    if (n.children.length > 0) {
-      result.push(...buildCategoryPath(n.children, path));
-    }
-  }
-  return result;
-}
-
 function SidebarItem({
   node,
   basePath,

@@ -201,7 +201,7 @@ export default async function NestedCategoryOrArticlePage({
   const category = findCategoryBySlugPath(tree, fullPath);
   if (!category) notFound();
 
-  let articles;
+  let articles: KnowledgeChunk[];
   try {
     const result = await fetchChunksByCategory(category._id, 1, 100);
     articles = result.data;

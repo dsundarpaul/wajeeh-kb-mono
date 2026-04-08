@@ -3,13 +3,13 @@ import type { Metadata } from "next";
 import {
   fetchCategoryTree,
   findCategoryBySlugPath,
-  getAllCategorySlugPaths,
+  fetchChunksByCategory,
 } from "@/lib/api/categories";
-import { fetchChunksByCategory } from "@/lib/api/categories";
 import ShellLayout from "@/components/layout/ShellLayout";
 import Breadcrumb, { type BreadcrumbItem } from "@/components/layout/Breadcrumb";
 import CategoryGrid from "@/components/category/CategoryGrid";
 import ArticleList from "@/components/article/ArticleList";
+import type { KnowledgeChunk } from "@/types/api";
 
 export const revalidate = 600;
 
@@ -48,7 +48,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
   if (!category) notFound();
 
-  let articles;
+  let articles: KnowledgeChunk[];
   try {
     const result = await fetchChunksByCategory(category._id, 1, 100);
     articles = result.data;
