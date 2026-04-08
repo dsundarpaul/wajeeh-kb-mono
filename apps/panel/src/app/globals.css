@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-neutral-100 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/40 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-white px-5 py-2.5 text-sm font-semibold text-neutral-700 transition-colors hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-400/30 disabled:opacity-50 disabled:cursor-not-allowed dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-success {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .card {
+    @apply rounded-lg border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900;
+  }
+  .input {
+    @apply block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 transition-colors dark:border-neutral-600 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500;
+  }
+  .label {
+    @apply block text-sm font-medium text-neutral-700 mb-1.5 dark:text-neutral-300;
+  }
+}
+
+.tiptap-editor .ProseMirror {
+  @apply min-h-[300px] p-4 outline-none text-neutral-900 dark:text-neutral-100;
+}
+
+.tiptap-editor .ProseMirror p {
+  @apply mb-3 leading-relaxed text-neutral-800 dark:text-neutral-200;
+}
+
+.tiptap-editor .ProseMirror h1 {
+  @apply text-2xl font-bold mb-4 text-neutral-900 dark:text-neutral-50;
+}
+
+.tiptap-editor .ProseMirror h2 {
+  @apply text-xl font-bold mb-3 text-neutral-900 dark:text-neutral-50;
+}
+
+.tiptap-editor .ProseMirror h3 {
+  @apply text-lg font-semibold mb-2 text-neutral-900 dark:text-neutral-100;
+}
+
+.tiptap-editor .ProseMirror ul {
+  @apply list-disc pl-6 mb-3;
+}
+
+.tiptap-editor .ProseMirror ol {
+  @apply list-decimal pl-6 mb-3;
+}
+
+.tiptap-editor .ProseMirror li {
+  @apply mb-1;
+}
+
+.tiptap-editor .ProseMirror blockquote {
+  @apply border-l-4 border-brand-500 pl-4 italic text-neutral-600 my-3 dark:text-neutral-400;
+}
+
+.tiptap-editor .ProseMirror code {
+  @apply bg-neutral-100 text-brand-700 px-1.5 py-0.5 rounded text-sm font-mono dark:bg-neutral-800 dark:text-brand-300;
+}
+
+.tiptap-editor .ProseMirror pre {
+  @apply bg-neutral-900 text-neutral-100 rounded-lg p-4 my-3 overflow-x-auto;
+}
+
+.tiptap-editor .ProseMirror pre code {
+  @apply bg-transparent text-neutral-100 p-0;
+}
+
+.tiptap-editor .ProseMirror a {
+  @apply text-brand-600 underline dark:text-brand-400;
+}
+
+.tiptap-editor .ProseMirror img {
+  @apply max-w-full rounded-lg my-3;
+}
+
+.tiptap-editor .ProseMirror hr {
+  @apply border-neutral-200 my-6 dark:border-neutral-700;
+}
+
+.tiptap-editor .ProseMirror .is-editor-empty:first-child::before {
+  @apply text-neutral-400 dark:text-neutral-500 pointer-events-none h-0 float-left;
+  content: attr(data-placeholder);
+}
+
+.article-body.prose {
+  @apply dark:prose-invert;
+}
+
+.article-body img {
+  @apply max-w-full rounded-lg my-4;
+}
+
+.article-body .aspect-video iframe {
+  @apply w-full;
+}

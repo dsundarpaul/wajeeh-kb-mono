@@ -1,0 +1,9 @@
+{
+  "name": "@wajeeh/typescript-config",
+  "version": "0.0.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "scripts": {
+    "lint": "node -e \"process.exit(0)\""
+  }
+}

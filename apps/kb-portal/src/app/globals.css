@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-brand: 0 105 255;
+  }
+
+  body {
+    @apply bg-white text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: theme("colors.neutral.300") transparent;
+  }
+  .dark .scrollbar-thin {
+    scrollbar-color: theme("colors.neutral.700") transparent;
+  }
+}
+
+.article-body img {
+  @apply max-w-full cursor-pointer rounded-lg my-4 transition-opacity;
+}
+
+.article-body img[style*="display: none"] + div {
+  @apply block;
+}
+
+.article-body .aspect-video iframe {
+  @apply w-full;
+}

@@ -1,0 +1,16 @@
+export enum ResponseCodes {
+  bad_request = 'bad_request',
+  server_error = 'server_error',
+  not_found = 'not_found',
+  success = 'success',
+  otp_sent = 'otp_sent',
+  user_exists = 'user_exists',
+  user_not_found = 'user_not_found',
+  wrong_otp = 'wrong_otp',
+  bad_password = 'bad_password',
+  validation_error = 'validation_error',
+  duplicate_record = 'duplicate_record',
+  invalid_coupon = 'invalid_coupon',
+  logged_out = 'logged_out',
+  temporary_inactive = 'temporary_inactive',
+}
