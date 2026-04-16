@@ -3,8 +3,11 @@ import type { Metadata } from "next";
 import {
   fetchCategoryTree,
   findCategoryBySlugPath,
-  fetchChunksByCategory,
 } from "@/lib/api/categories";
+import { fetchChunksByCategory } from "@/lib/api/categories";
+import { resolveKbPortalLocale } from "@/lib/kb-locale.server";
+import { intlLocaleForKbPortal } from "@/lib/kb-locale";
+import { getPortalUi } from "@/lib/get-portal-ui";
 import ShellLayout from "@/components/layout/ShellLayout";
 import Breadcrumb, { type BreadcrumbItem } from "@/components/layout/Breadcrumb";
 import CategoryGrid from "@/components/category/CategoryGrid";
@@ -15,6 +18,7 @@ export const revalidate = 600;
 
 interface CategoryPageProps {
   params: Promise<{ categorySlug: string }>;
+  searchParams?: Promise<{ locale?: string }>;
 }
 
 export async function generateStaticParams() {
@@ -28,9 +32,12 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: CategoryPageProps): Promise<Metadata> {
   const { categorySlug } = await params;
-  const tree = await fetchCategoryTree();
+  const sp = searchParams ? await searchParams : {};
+  const locale = await resolveKbPortalLocale(sp.locale);
+  const tree = await fetchCategoryTree(locale, { forPortal: true });
   const category = findCategoryBySlugPath(tree, [categorySlug]);
   if (!category) return { title: "Category Not Found" };
 
@@ -41,16 +48,27 @@ export async function generateMetadata({
   };
 }
 
-export default async function CategoryPage({ params }: CategoryPageProps) {
+export default async function CategoryPage({
+  params,
+  searchParams,
+}: CategoryPageProps) {
   const { categorySlug } = await params;
-  const tree = await fetchCategoryTree();
+  const sp = searchParams ? await searchParams : {};
+  const { locale: articleLocale, messages } = await getPortalUi(sp.locale);
+  const dateLocale = intlLocaleForKbPortal(articleLocale);
+  const tree = await fetchCategoryTree(articleLocale, { forPortal: true });
   const category = findCategoryBySlugPath(tree, [categorySlug]);
 
   if (!category) notFound();
 
-  let articles: KnowledgeChunk[];
+  let articles: KnowledgeChunk[] = [];
   try {
-    const result = await fetchChunksByCategory(category._id, 1, 100);
+    const result = await fetchChunksByCategory(
+      category._id,
+      1,
+      100,
+      articleLocale,
+    );
     articles = result.data;
   } catch {
     articles = [];
@@ -64,8 +82,8 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   const hasArticles = articles.length > 0;
 
   return (
-    <ShellLayout tree={tree}>
-      <Breadcrumb items={breadcrumbs} />
+    <ShellLayout tree={tree} messages={messages}>
+      <Breadcrumb items={breadcrumbs} homeLabel={messages.breadcrumbHome} />
 
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
@@ -81,10 +99,11 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
       {hasSubcategories && (
         <section className="mb-8">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-            Subcategories
+            {messages.categorySubcategories}
           </h2>
           <CategoryGrid
             categories={category.children}
+            messages={messages}
             basePath={`/${categorySlug}`}
           />
         </section>
@@ -97,11 +116,13 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
       {hasArticles && (
         <section>
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-            Articles
+            {messages.categoryArticles}
           </h2>
           <ArticleList
             articles={articles}
             basePath={`/${categorySlug}`}
+            updatedLabel={messages.articleCardUpdated}
+            dateLocale={dateLocale}
           />
         </section>
       )}
@@ -109,7 +130,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
       {!hasSubcategories && !hasArticles && (
         <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-12 text-center dark:border-neutral-800 dark:bg-neutral-900">
           <p className="text-neutral-500 dark:text-neutral-400">
-            No content in this category yet.
+            {messages.categoryEmpty}
           </p>
         </div>
       )}

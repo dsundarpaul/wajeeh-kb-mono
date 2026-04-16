@@ -20,9 +20,21 @@ export interface KnowledgeChunkMedia {
   order?: number;
 }
 
+export interface KnowledgeChunkSeo {
+  metaTitle?: string;
+  metaDescription?: string;
+  ogImageUrl?: string;
+  keywords?: string;
+}
+
 export interface KnowledgeChunk {
   _id: string;
+  slug?: string;
   title: string;
+  locale?: string;
+  titleFallback?: boolean;
+  contentFallback?: boolean;
+  requestedLocale?: string;
   url: string;
   content: string;
   tags: string[];
@@ -32,6 +44,7 @@ export interface KnowledgeChunk {
   primaryCategoryId?: string | null;
   sections: KnowledgeChunkSection[];
   media: KnowledgeChunkMedia[];
+  seo?: KnowledgeChunkSeo;
   isIndexed: boolean;
   createdAt: string;
   updatedAt: string;
@@ -57,6 +70,7 @@ export interface KnowledgeCategoryTreeNode {
   order: number;
   ancestorIds: string[];
   description?: string;
+  articleCount?: number;
   children: KnowledgeCategoryTreeNode[];
 }
 

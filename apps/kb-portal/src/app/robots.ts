@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://kb.example.com";
+const BASE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://kb.example.com"
+).replace(/\/$/, "");
 
 export default function robots(): MetadataRoute.Robots {
   return {

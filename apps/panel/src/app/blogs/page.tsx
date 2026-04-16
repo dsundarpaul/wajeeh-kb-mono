@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import {
@@ -9,8 +9,15 @@ import {
   fetchCategoryTree,
   fetchKnowledgeChunksPage,
 } from "@/lib/kb/kb-api";
+import {
+  ARTICLE_LOCALES,
+  readStoredListLocale,
+  writeStoredListLocale,
+  type ArticleLocaleCode,
+} from "@/lib/kb/locales";
 import type { KnowledgeCategoryTreeNode } from "@/lib/kb/types";
-import { Plus, Pencil, Trash2, FileText } from "lucide-react";
+import { Select } from "@/components/ui/Select";
+import { Plus, Pencil, Trash2, FileText, Languages } from "lucide-react";
 import toast from "react-hot-toast";
 
 type BlogRow = {
@@ -37,16 +44,22 @@ export default function BlogsPage() {
   const [blogs, setBlogs] = useState<BlogRow[]>([]);
   const [categoryTree, setCategoryTree] = useState<KnowledgeCategoryTreeNode[]>([]);
   const [loading, setLoading] = useState(true);
+  const [listLocale, setListLocale] = useState<ArticleLocaleCode>("en");
 
   const nameById = useMemo(
     () => categoryLabelMapFromTree(categoryTree),
     [categoryTree],
   );
 
-  const fetchBlogs = async () => {
+  useEffect(() => {
+    setListLocale(readStoredListLocale());
+  }, []);
+
+  const fetchBlogs = useCallback(async () => {
+    setLoading(true);
     try {
       const [page, tree] = await Promise.all([
-        fetchKnowledgeChunksPage(1, 100, undefined, "blog"),
+        fetchKnowledgeChunksPage(1, 100, undefined, "blog", listLocale),
         fetchCategoryTree().catch(() => [] as KnowledgeCategoryTreeNode[]),
       ]);
       setBlogs(page.data as BlogRow[]);
@@ -56,11 +69,16 @@ export default function BlogsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [listLocale]);
 
   useEffect(() => {
-    fetchBlogs();
-  }, []);
+    void fetchBlogs();
+  }, [fetchBlogs]);
+
+  const onListLocaleChange = (locale: ArticleLocaleCode) => {
+    writeStoredListLocale(locale);
+    setListLocale(locale);
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this article?")) return;
@@ -84,14 +102,40 @@ export default function BlogsPage() {
             Blog-type knowledge chunks — assign categories on the editor screen
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/categories" className="btn-secondary">
-            Categories
-          </Link>
-          <Link href="/blogs/new" className="btn-primary">
-            <Plus size={16} />
-            New article
-          </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Languages
+              size={18}
+              className="shrink-0 text-neutral-400 dark:text-neutral-500"
+              aria-hidden
+            />
+            <label htmlFor="kb-list-locale" className="sr-only">
+              List language
+            </label>
+            <Select
+              id="kb-list-locale"
+              value={listLocale}
+              onChange={(e) =>
+                onListLocaleChange(e.target.value as ArticleLocaleCode)
+              }
+              className="max-w-[220px] py-2 text-sm"
+            >
+              {ARTICLE_LOCALES.map((loc) => (
+                <option key={loc.code} value={loc.code}>
+                  {loc.label} ({loc.nativeLabel})
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/categories" className="btn-secondary">
+              Categories
+            </Link>
+            <Link href="/blogs/new" className="btn-primary">
+              <Plus size={16} />
+              New article
+            </Link>
+          </div>
         </div>
       </div>
 

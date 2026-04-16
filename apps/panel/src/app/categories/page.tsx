@@ -10,11 +10,22 @@ import {
   fetchCategoriesFlat,
   flattenCategoryTree,
   patchCategory,
+  translateCategoryFields,
   type KnowledgeCategoryRow,
 } from "@/lib/kb/kb-api";
-import type { KnowledgeCategoryTreeNode } from "@/lib/kb/types";
+import type {
+  KnowledgeCategoryLocales,
+  KnowledgeCategoryTreeNode,
+} from "@/lib/kb/types";
 import { slugifySegment } from "@/lib/kb/article-helpers";
-import { ArrowLeft, FolderTree, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  FolderTree,
+  Languages,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import {
   Drawer,
@@ -38,7 +49,12 @@ export default function CategoriesPage() {
   const [parentId, setParentId] = useState<string>("");
   const [order, setOrder] = useState(0);
   const [description, setDescription] = useState("");
+  const [nameAr, setNameAr] = useState("");
+  const [descAr, setDescAr] = useState("");
+  const [nameUr, setNameUr] = useState("");
+  const [descUr, setDescUr] = useState("");
   const [saving, setSaving] = useState(false);
+  const [translating, setTranslating] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -78,6 +94,10 @@ export default function CategoriesPage() {
     setParentId("");
     setOrder(0);
     setDescription("");
+    setNameAr("");
+    setDescAr("");
+    setNameUr("");
+    setDescUr("");
   };
 
   const openCreate = () => {
@@ -93,6 +113,10 @@ export default function CategoriesPage() {
     setParentId(row.parentId ?? "");
     setOrder(row.order ?? 0);
     setDescription(row.description ?? "");
+    setNameAr(row.locales?.ar?.name ?? "");
+    setDescAr(row.locales?.ar?.description ?? "");
+    setNameUr(row.locales?.ur?.name ?? "");
+    setDescUr(row.locales?.ur?.description ?? "");
   };
 
   const onNameBlur = () => {
@@ -109,6 +133,7 @@ export default function CategoriesPage() {
     }
     setSaving(true);
     try {
+      const locales = buildLocalesPayload(nameAr, descAr, nameUr, descUr);
       if (formMode === "create") {
         await createCategory({
           name: name.trim(),
@@ -116,6 +141,7 @@ export default function CategoriesPage() {
           parentId: parentId || null,
           order,
           description: description.trim() || undefined,
+          locales,
         });
         toast.success("Category created");
       } else if (formMode === "edit" && editingId) {
@@ -125,6 +151,7 @@ export default function CategoriesPage() {
           parentId: parentId || null,
           order,
           description: description.trim() || undefined,
+          locales,
         });
         toast.success("Category updated");
       }
@@ -134,6 +161,32 @@ export default function CategoriesPage() {
       toast.error(err instanceof Error ? err.message : "Save failed");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTranslateLocales = async () => {
+    const n = name.trim();
+    const d = description.trim();
+    if (!n && !d) {
+      toast.error("Enter English name or description first");
+      return;
+    }
+    setTranslating(true);
+    try {
+      const { locales } = await translateCategoryFields({
+        name: n || undefined,
+        description: d || undefined,
+        targets: ["ar", "ur"],
+      });
+      if (locales.ar?.name != null) setNameAr(locales.ar.name);
+      if (locales.ar?.description != null) setDescAr(locales.ar.description);
+      if (locales.ur?.name != null) setNameUr(locales.ur.name);
+      if (locales.ur?.description != null) setDescUr(locales.ur.description);
+      toast.success("Arabic and Urdu fields updated");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Translation failed");
+    } finally {
+      setTranslating(false);
     }
   };
 
@@ -260,6 +313,78 @@ export default function CategoriesPage() {
                 rows={3}
               />
             </div>
+            <div className="sm:col-span-2 border-t border-neutral-200 pt-4 dark:border-neutral-800">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+                  KB portal translations (optional)
+                </p>
+                <button
+                  type="button"
+                  className="btn-secondary inline-flex shrink-0 items-center gap-1.5 text-sm"
+                  disabled={
+                    translating || (!name.trim() && !description.trim())
+                  }
+                  onClick={() => void handleTranslateLocales()}
+                >
+                  <Languages size={16} aria-hidden />
+                  {translating
+                    ? "Translating…"
+                    : "Translate from English (AR & Urdu)"}
+                </button>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="cat-name-ar" className="label">
+                    Arabic name
+                  </label>
+                  <input
+                    id="cat-name-ar"
+                    className="input"
+                    value={nameAr}
+                    onChange={(e) => setNameAr(e.target.value)}
+                    dir="rtl"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="cat-name-ur" className="label">
+                    Urdu name
+                  </label>
+                  <input
+                    id="cat-name-ur"
+                    className="input"
+                    value={nameUr}
+                    onChange={(e) => setNameUr(e.target.value)}
+                    dir="rtl"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label htmlFor="cat-desc-ar" className="label">
+                    Arabic description
+                  </label>
+                  <textarea
+                    id="cat-desc-ar"
+                    className="input min-h-[60px]"
+                    value={descAr}
+                    onChange={(e) => setDescAr(e.target.value)}
+                    dir="rtl"
+                    rows={2}
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label htmlFor="cat-desc-ur" className="label">
+                    Urdu description
+                  </label>
+                  <textarea
+                    id="cat-desc-ur"
+                    className="input min-h-[60px]"
+                    value={descUr}
+                    onChange={(e) => setDescUr(e.target.value)}
+                    dir="rtl"
+                    rows={2}
+                  />
+                </div>
+              </div>
+            </div>
           </form>
           <DrawerFooter className="flex-row justify-end border-t-0">
             <button type="button" className="btn-secondary" onClick={resetForm}>
@@ -353,6 +478,25 @@ export default function CategoriesPage() {
       )}
     </DashboardLayout>
   );
+}
+
+function buildLocalesPayload(
+  nameAr: string,
+  descAr: string,
+  nameUr: string,
+  descUr: string,
+): KnowledgeCategoryLocales | undefined {
+  const ar: { name?: string; description?: string } = {};
+  if (nameAr.trim()) ar.name = nameAr.trim();
+  if (descAr.trim()) ar.description = descAr.trim();
+  const ur: { name?: string; description?: string } = {};
+  if (nameUr.trim()) ur.name = nameUr.trim();
+  if (descUr.trim()) ur.description = descUr.trim();
+  const locales: KnowledgeCategoryLocales = {};
+  if (Object.keys(ar).length) locales.ar = ar;
+  if (Object.keys(ur).length) locales.ur = ur;
+  if (!locales.ar && !locales.ur) return undefined;
+  return locales;
 }
 
 function isDescendant(

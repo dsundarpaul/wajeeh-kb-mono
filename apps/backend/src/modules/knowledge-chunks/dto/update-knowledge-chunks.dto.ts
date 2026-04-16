@@ -1,4 +1,4 @@
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   IsArray,
   IsEnum,
@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  Matches,
   ValidateIf,
   ValidateNested,
 } from "class-validator";
@@ -20,6 +21,20 @@ export class UpdateKnowledgeChunksDto {
   @IsString()
   @IsNotEmpty()
   title?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === null) return "";
+    if (value === undefined) return undefined;
+    if (typeof value === "string") return value.trim();
+    return undefined;
+  })
+  @ValidateIf(
+    (o) => typeof o.slug === "string" && o.slug.length > 0,
+  )
+  @IsString()
+  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  slug?: string;
 
   @IsOptional()
   @IsString()

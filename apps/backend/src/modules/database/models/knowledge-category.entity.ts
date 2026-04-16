@@ -22,6 +22,24 @@ export class KnowledgeCategory {
 
   @Prop({ type: String })
   description?: string;
+
+  @Prop({
+    type: {
+      ar: {
+        name: { type: String },
+        description: { type: String },
+      },
+      ur: {
+        name: { type: String },
+        description: { type: String },
+      },
+    },
+    _id: false,
+  })
+  locales?: {
+    ar?: { name?: string; description?: string };
+    ur?: { name?: string; description?: string };
+  };
 }
 
 export const KnowledgeCategorySchema =

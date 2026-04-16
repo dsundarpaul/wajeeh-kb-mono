@@ -1,3 +1,4 @@
+import { Type } from "class-transformer";
 import {
   IsNotEmpty,
   IsNumber,
@@ -5,7 +6,9 @@ import {
   IsString,
   Matches,
   MaxLength,
+  ValidateNested,
 } from "class-validator";
+import { CategoryLocalesDto } from "./category-locales.dto";
 
 export class CreateKnowledgeCategoryDto {
   @IsString()
@@ -33,4 +36,9 @@ export class CreateKnowledgeCategoryDto {
   @IsString()
   @MaxLength(2000)
   description?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CategoryLocalesDto)
+  locales?: CategoryLocalesDto;
 }

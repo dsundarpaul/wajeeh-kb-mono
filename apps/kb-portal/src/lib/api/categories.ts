@@ -6,37 +6,26 @@ import type {
 } from "@/types/api";
 import { apiFetch } from "./client";
 
-function ensureCategoryTreeChildren(
-  nodes: KnowledgeCategoryTreeNode[],
-): KnowledgeCategoryTreeNode[] {
-  return nodes.map((node) => ({
-    ...node,
-    children: ensureCategoryTreeChildren(
-      Array.isArray(node.children) ? node.children : [],
-    ),
-  }));
-}
+export type FetchCategoryTreeOptions = {
+  forPortal?: boolean;
+};
 
-function isVercelBuildWithoutApiUrl(): boolean {
-  return (
-    process.env.VERCEL === "1" &&
-    !process.env.NEXT_PUBLIC_API_URL?.trim()
-  );
-}
-
-export async function fetchCategoryTree(): Promise<
-  KnowledgeCategoryTreeNode[]
-> {
-  if (isVercelBuildWithoutApiUrl()) return [];
-  try {
-    const raw = await apiFetch<KnowledgeCategoryTreeNode[]>("/categories/tree", {
-      // next: { revalidate: 3600 },
-    });
-    if (!Array.isArray(raw)) return [];
-    return ensureCategoryTreeChildren(raw);
-  } catch {
-    return [];
+export async function fetchCategoryTree(
+  locale?: string | null,
+  options?: FetchCategoryTreeOptions,
+): Promise<KnowledgeCategoryTreeNode[]> {
+  const params = new URLSearchParams();
+  if (options?.forPortal) {
+    const loc =
+      locale === "ar" || locale === "ur" || locale === "en" ? locale : "en";
+    params.set("locale", loc);
+    params.set("articleCounts", "true");
   }
+  const q = params.toString();
+  return apiFetch<KnowledgeCategoryTreeNode[]>(
+    `/categories/tree${q ? `?${q}` : ""}`,
+    {},
+  );
 }
 
 export async function fetchCategoriesFlat(): Promise<KnowledgeCategory[]> {
@@ -57,11 +46,15 @@ export async function fetchChunksByCategory(
   categoryId: string,
   page = 1,
   limit = 20,
+  locale?: string | null,
 ): Promise<Paginated<KnowledgeChunk>> {
   const params = new URLSearchParams({
     page: String(page),
     limit: String(limit),
   });
+  if (locale === "en" || locale === "ar" || locale === "ur") {
+    params.set("locale", locale);
+  }
   return apiFetch<Paginated<KnowledgeChunk>>(
     `/categories/${categoryId}/chunks?${params}`,
     // { next: { revalidate: 600 } },

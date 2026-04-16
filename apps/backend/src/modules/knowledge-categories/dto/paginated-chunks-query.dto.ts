@@ -1,7 +1,11 @@
 import { Type } from "class-transformer";
-import { IsInt, IsOptional, Max, Min } from "class-validator";
+import { IsIn, IsInt, IsOptional, Max, Min } from "class-validator";
 
 export class PaginatedChunksQueryDto {
+  @IsOptional()
+  @IsIn(["en", "ar", "ur"])
+  locale?: "en" | "ar" | "ur";
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()

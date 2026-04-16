@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import SearchBar from "@/components/search/SearchBar";
 
-export default function HomeSearch() {
+export default function HomeSearch({ placeholder }: { placeholder: string }) {
   const router = useRouter();
   const [value, setValue] = useState("");
 
@@ -21,7 +21,7 @@ export default function HomeSearch() {
       onChange={setValue}
       onSubmit={handleSubmit}
       size="large"
-      placeholder="Search for anything..."
+      placeholder={placeholder}
       autoFocus
     />
   );

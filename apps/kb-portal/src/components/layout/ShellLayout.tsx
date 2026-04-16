@@ -2,17 +2,20 @@
 
 import { useState, useCallback } from "react";
 import type { KnowledgeCategoryTreeNode } from "@/types/api";
+import type { PortalMessages } from "@/lib/portal-messages";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 
 interface ShellLayoutProps {
   tree: KnowledgeCategoryTreeNode[];
+  messages: PortalMessages;
   children: React.ReactNode;
   showSidebar?: boolean;
 }
 
 export default function ShellLayout({
   tree,
+  messages,
   children,
   showSidebar = true,
 }: ShellLayoutProps) {
@@ -22,10 +25,19 @@ export default function ShellLayout({
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
-      <Header onToggleSidebar={toggleSidebar} sidebarOpen={sidebarOpen} />
+      <Header
+        messages={messages}
+        onToggleSidebar={showSidebar ? toggleSidebar : undefined}
+        sidebarOpen={sidebarOpen}
+      />
       <div className="mx-auto flex max-w-7xl">
         {showSidebar && (
-          <Sidebar tree={tree} open={sidebarOpen} onClose={closeSidebar} />
+          <Sidebar
+            tree={tree}
+            messages={messages}
+            open={sidebarOpen}
+            onClose={closeSidebar}
+          />
         )}
         <main
           className={`min-h-[calc(100vh-4rem)] flex-1 ${showSidebar ? "px-4 py-8 sm:px-6 lg:px-10" : ""}`}

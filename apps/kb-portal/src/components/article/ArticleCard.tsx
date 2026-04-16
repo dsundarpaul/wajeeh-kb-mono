@@ -6,11 +6,13 @@ import { getExcerpt } from "@/lib/utils/richtext";
 interface ArticleCardProps {
   article: KnowledgeChunk;
   href: string;
+  updatedLabel: string;
+  dateLocale: string;
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string, dateLocale: string): string {
   try {
-    return new Intl.DateTimeFormat("en-US", {
+    return new Intl.DateTimeFormat(dateLocale, {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -20,7 +22,12 @@ function formatDate(dateStr: string): string {
   }
 }
 
-export default function ArticleCard({ article, href }: ArticleCardProps) {
+export default function ArticleCard({
+  article,
+  href,
+  updatedLabel,
+  dateLocale,
+}: ArticleCardProps) {
   const excerpt = getExcerpt(article.content, 120);
 
   return (
@@ -47,7 +54,9 @@ export default function ArticleCard({ article, href }: ArticleCardProps) {
         {article.updatedAt && (
           <div className="mt-1.5 flex items-center gap-1 text-xs text-neutral-400 dark:text-neutral-500">
             <Clock className="h-3 w-3" />
-            <span>Updated {formatDate(article.updatedAt)}</span>
+            <span>
+              {updatedLabel} {formatDate(article.updatedAt, dateLocale)}
+            </span>
           </div>
         )}
       </div>

@@ -1,5 +1,14 @@
 import { Type } from "class-transformer";
-import { IsEnum, IsInt, IsMongoId, IsOptional, IsString, Max, Min } from "class-validator";
+import {
+  IsEnum,
+  IsIn,
+  IsInt,
+  IsMongoId,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from "class-validator";
 import { KnowledgeChunksType } from "../../database/models/knowledge-chunks.entity";
 
 export class ListKnowledgeChunksQueryDto {
@@ -14,6 +23,10 @@ export class ListKnowledgeChunksQueryDto {
   @IsOptional()
   @IsEnum(KnowledgeChunksType)
   type?: KnowledgeChunksType;
+
+  @IsOptional()
+  @IsIn(["en", "ar", "ur"])
+  locale?: "en" | "ar" | "ur";
 
   @IsOptional()
   @Type(() => Number)

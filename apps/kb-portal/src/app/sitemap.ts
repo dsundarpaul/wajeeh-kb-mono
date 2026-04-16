@@ -2,10 +2,14 @@ import type { MetadataRoute } from "next";
 import {
   fetchCategoryTree,
   getAllCategorySlugPaths,
+  buildSlugPathMap,
 } from "@/lib/api/categories";
-import { fetchArticles } from "@/lib/api/articles";
+import { fetchAllKnowledgeChunks } from "@/lib/api/articles";
+import { knowledgeChunkPublicPath } from "@/lib/routes/article-path";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://kb.example.com";
+const BASE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://kb.example.com"
+).replace(/\/$/, "");
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries: MetadataRoute.Sitemap = [
@@ -19,6 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const tree = await fetchCategoryTree();
+    const slugMap = buildSlugPathMap(tree);
     const categoryPaths = getAllCategorySlugPaths(tree);
 
     for (const path of categoryPaths) {
@@ -29,11 +34,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
     }
 
-    const articlesResult = await fetchArticles(1, 100);
-    for (const article of articlesResult.data) {
+    const articles = await fetchAllKnowledgeChunks();
+    for (const article of articles) {
+      const path = knowledgeChunkPublicPath(article, slugMap);
       entries.push({
-        url: `${BASE_URL}/article/${article._id}`,
-        lastModified: article.updatedAt ? new Date(article.updatedAt) : new Date(),
+        url: `${BASE_URL}${path}`,
+        lastModified: article.updatedAt
+          ? new Date(article.updatedAt)
+          : new Date(),
         changeFrequency: "weekly",
         priority: 0.7,
       });

@@ -1,5 +1,16 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3003";
 
+function formatErrorMessage(body: unknown): string {
+  if (body && typeof body === "object" && "message" in body) {
+    const m = (body as { message: unknown }).message;
+    if (typeof m === "string") return m;
+    if (Array.isArray(m)) {
+      return m.map((x) => String(x)).filter(Boolean).join(", ");
+    }
+  }
+  return "";
+}
+
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("token");
@@ -31,7 +42,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.message || `Request failed: ${res.status}`);
+    const msg = formatErrorMessage(body);
+    throw new Error(msg || `Request failed: ${res.status}`);
   }
 
   return res.json();

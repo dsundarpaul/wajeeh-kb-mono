@@ -2,10 +2,14 @@ import type { KnowledgeChunk } from "@/types/api";
 import { FileText, Video, Clock } from "lucide-react";
 import Link from "next/link";
 import { getExcerpt } from "@/lib/utils/richtext";
+import type { PortalMessages } from "@/lib/portal-messages";
 
 interface SearchResultsProps {
   articles: KnowledgeChunk[];
   query: string;
+  articleHref: (article: KnowledgeChunk) => string;
+  messages: PortalMessages;
+  dateLocale: string;
 }
 
 function highlightMatch(text: string, query: string): React.ReactNode {
@@ -26,9 +30,9 @@ function highlightMatch(text: string, query: string): React.ReactNode {
   );
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string, dateLocale: string): string {
   try {
-    return new Intl.DateTimeFormat("en-US", {
+    return new Intl.DateTimeFormat(dateLocale, {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -38,19 +42,26 @@ function formatDate(dateStr: string): string {
   }
 }
 
+function fmt(template: string, n: number) {
+  return template.replace(/\{\{n\}\}/g, String(n));
+}
+
 export default function SearchResults({
   articles,
   query,
+  articleHref,
+  messages,
+  dateLocale,
 }: SearchResultsProps) {
   if (articles.length === 0) {
     return (
       <div className="py-16 text-center">
         <div className="mb-4 text-5xl">🔍</div>
         <h3 className="mb-2 text-lg font-semibold text-neutral-900 dark:text-white">
-          No results found
+          {messages.searchNoResultsTitle}
         </h3>
         <p className="text-sm text-neutral-500 dark:text-neutral-400">
-          Try using different keywords or check your spelling.
+          {messages.searchNoResultsHint}
         </p>
       </div>
     );
@@ -59,7 +70,9 @@ export default function SearchResults({
   return (
     <div>
       <p className="mb-6 text-sm text-neutral-500 dark:text-neutral-400">
-        Found {articles.length} result{articles.length !== 1 ? "s" : ""}
+        {articles.length === 1
+          ? messages.searchFoundOne
+          : fmt(messages.searchFoundMany, articles.length)}
       </p>
       <div className="space-y-2">
         {articles.map((article) => {
@@ -67,7 +80,7 @@ export default function SearchResults({
           return (
             <Link
               key={article._id}
-              href={`/article/${article._id}`}
+              href={articleHref(article)}
               className="group block rounded-lg border border-transparent p-4 transition-all hover:border-neutral-200 hover:bg-neutral-50 dark:hover:border-neutral-800 dark:hover:bg-neutral-900/50"
             >
               <div className="flex items-start gap-3">
@@ -91,7 +104,7 @@ export default function SearchResults({
                     {article.updatedAt && (
                       <span className="flex items-center gap-1 text-xs text-neutral-400 dark:text-neutral-500">
                         <Clock className="h-3 w-3" />
-                        {formatDate(article.updatedAt)}
+                        {formatDate(article.updatedAt, dateLocale)}
                       </span>
                     )}
                     {article.tags.length > 0 && (

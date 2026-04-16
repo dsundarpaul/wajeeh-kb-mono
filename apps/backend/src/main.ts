@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as dns from 'dns';
+import { MongoExceptionFilter } from './filters/mongo-exception.filter';
 
 // Configure DNS to use Google DNS for MongoDB SRV resolution
 dns.setServers(['8.8.8.8', '8.8.4.4']);
@@ -11,6 +12,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors();
+  app.useGlobalFilters(new MongoExceptionFilter());
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,

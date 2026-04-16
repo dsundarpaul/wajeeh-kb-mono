@@ -2,6 +2,7 @@ import { api } from "@/lib/api";
 import type {
   CreateCategoryBody,
   CreateKnowledgeChunkBody,
+  KnowledgeCategoryLocales,
   KnowledgeCategoryTreeNode,
   KnowledgeChunk,
   KnowledgeChunkType,
@@ -97,6 +98,7 @@ export type KnowledgeCategoryRow = {
   order: number;
   ancestorIds?: string[];
   description?: string;
+  locales?: KnowledgeCategoryLocales;
 };
 
 export async function fetchCategoriesFlat(): Promise<KnowledgeCategoryRow[]> {
@@ -115,16 +117,60 @@ export async function deleteCategory(id: string) {
   return api.delete<{ deleted: boolean }>(`/categories/${id}`);
 }
 
-export async function fetchKnowledgeChunk(id: string): Promise<KnowledgeChunk> {
-  return api.get<KnowledgeChunk>(`/knowledge-chunks/${id}`);
+export async function translateCategoryFields(body: {
+  name?: string;
+  description?: string;
+  targets: ("ar" | "ur")[];
+}): Promise<{ locales: KnowledgeCategoryLocales }> {
+  return api.post<{ locales: KnowledgeCategoryLocales }>(
+    "/categories/translate",
+    body,
+  );
+}
+
+export async function fetchKnowledgeChunk(
+  id: string,
+  locale?: string,
+): Promise<KnowledgeChunk> {
+  const q = locale && locale !== "en" ? `?locale=${encodeURIComponent(locale)}` : "";
+  return api.get<KnowledgeChunk>(`/knowledge-chunks/${encodeURIComponent(id)}${q}`);
+}
+
+export async function fetchKnowledgeChunkAdmin(
+  id: string,
+): Promise<KnowledgeChunk> {
+  return api.get<KnowledgeChunk>(
+    `/knowledge-chunks/${encodeURIComponent(id)}/admin`,
+  );
 }
 
 export async function createKnowledgeChunk(body: CreateKnowledgeChunkBody) {
   return api.post<KnowledgeChunk>("/knowledge-chunks", body);
 }
 
-export async function patchKnowledgeChunk(id: string, body: PatchKnowledgeChunkBody) {
-  return api.patch<KnowledgeChunk>(`/knowledge-chunks/${id}`, body);
+export async function patchKnowledgeChunk(
+  id: string,
+  body: PatchKnowledgeChunkBody,
+  locale?: "ar" | "ur",
+) {
+  const q =
+    locale === "ar" || locale === "ur"
+      ? `?locale=${encodeURIComponent(locale)}`
+      : "";
+  return api.patch<KnowledgeChunk>(
+    `/knowledge-chunks/${encodeURIComponent(id)}${q}`,
+    body,
+  );
+}
+
+export async function translateKnowledgeChunk(
+  id: string,
+  targets: ("ar" | "ur")[],
+): Promise<KnowledgeChunk> {
+  return api.post<KnowledgeChunk>(
+    `/knowledge-chunks/${encodeURIComponent(id)}/translate`,
+    { targets },
+  );
 }
 
 export async function deleteKnowledgeChunk(id: string) {
@@ -136,10 +182,14 @@ export async function fetchKnowledgeChunksPage(
   limit = 100,
   categoryId?: string,
   type?: KnowledgeChunkType,
+  listLocale?: "en" | "ar" | "ur",
 ): Promise<Paginated<KnowledgeChunk>> {
   const q = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (categoryId) q.set("categoryId", categoryId);
   if (type) q.set("type", type);
+  if (listLocale && listLocale !== "en") {
+    q.set("locale", listLocale);
+  }
   return api.get<Paginated<KnowledgeChunk>>(`/knowledge-chunks?${q.toString()}`);
 }
 

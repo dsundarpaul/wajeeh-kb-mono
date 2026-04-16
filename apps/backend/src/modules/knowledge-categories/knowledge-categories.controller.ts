@@ -15,6 +15,8 @@ import { KnowledgeCategoriesService } from "./knowledge-categories.service";
 import { CreateKnowledgeCategoryDto } from "./dto/create-knowledge-category.dto";
 import { UpdateKnowledgeCategoryDto } from "./dto/update-knowledge-category.dto";
 import { PaginatedChunksQueryDto } from "./dto/paginated-chunks-query.dto";
+import { CategoryTreeQueryDto } from "./dto/category-tree-query.dto";
+import { TranslateCategoryFieldsDto } from "./dto/translate-category-fields.dto";
 
 @Controller("categories")
 export class KnowledgeCategoriesController {
@@ -23,10 +25,16 @@ export class KnowledgeCategoriesController {
   ) {}
 
   @Get("tree")
-  @ApiOperation({ summary: "Nested category tree" })
+  @ApiOperation({
+    summary:
+      "Nested category tree. Optional locale + articleCounts for public KB portal.",
+  })
   @ApiResponse({ status: 200 })
-  findTree() {
-    return this.knowledgeCategoriesService.findTree();
+  findTree(@Query() query: CategoryTreeQueryDto) {
+    return this.knowledgeCategoriesService.findTree({
+      locale: query.locale,
+      includeArticleCounts: query.articleCounts === true,
+    });
   }
 
   @Get(":id/chunks")
@@ -38,10 +46,12 @@ export class KnowledgeCategoriesController {
   ) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
+    const locale = query.locale ?? "en";
     return this.knowledgeCategoriesService.findChunksByCategory(
       id,
       page,
       limit,
+      locale,
     );
   }
 
@@ -57,6 +67,17 @@ export class KnowledgeCategoriesController {
   @ApiResponse({ status: 200 })
   findAllFlat() {
     return this.knowledgeCategoriesService.findAllFlat();
+  }
+
+  @Post("translate")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Translate English name/description to Arabic and/or Urdu",
+  })
+  @ApiResponse({ status: 200 })
+  translateFields(@Body() dto: TranslateCategoryFieldsDto) {
+    return this.knowledgeCategoriesService.translateFieldsFromEnglish(dto);
   }
 
   @Post()

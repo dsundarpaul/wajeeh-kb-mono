@@ -1,18 +1,26 @@
 import Link from "next/link";
 import { FolderOpen, ChevronRight } from "lucide-react";
 import type { KnowledgeCategoryTreeNode } from "@/types/api";
+import type { PortalMessages } from "@/lib/portal-messages";
 
 interface CategoryCardProps {
   category: KnowledgeCategoryTreeNode;
   href: string;
-  articleCount?: number;
+  messages: PortalMessages;
+}
+
+function fmt(template: string, n: number) {
+  return template.replace(/\{\{n\}\}/g, String(n));
 }
 
 export default function CategoryCard({
   category,
   href,
-  articleCount,
+  messages,
 }: CategoryCardProps) {
+  const articleCount = category.articleCount ?? 0;
+  const subCount = category.children.length;
+
   return (
     <Link
       href={href}
@@ -29,19 +37,22 @@ export default function CategoryCard({
           {category.description}
         </p>
       )}
-      <div className="mt-auto flex items-center gap-2 text-xs text-neutral-400 dark:text-neutral-500">
-        {articleCount !== undefined && (
+      <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-400 dark:text-neutral-500">
+        {articleCount > 0 && (
           <span>
-            {articleCount} {articleCount === 1 ? "article" : "articles"}
+            {articleCount === 1
+              ? messages.categoryCardOneArticle
+              : fmt(messages.categoryCardNArticles, articleCount)}
           </span>
         )}
-        {(category.children ?? []).length > 0 && (
+        {subCount > 0 && (
           <span>
-            {(category.children ?? []).length} subcategor
-            {(category.children ?? []).length === 1 ? "y" : "ies"}
+            {subCount === 1
+              ? messages.categoryCardOneSubcategory
+              : fmt(messages.categoryCardNSubcategories, subCount)}
           </span>
         )}
-        <ChevronRight className="ml-auto h-4 w-4 text-neutral-300 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-brand-500 dark:text-neutral-600" />
+        <ChevronRight className="ms-auto h-4 w-4 shrink-0 text-neutral-300 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-brand-500 rtl:rotate-180 dark:text-neutral-600" />
       </div>
     </Link>
   );

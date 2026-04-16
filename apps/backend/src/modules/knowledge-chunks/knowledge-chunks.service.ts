@@ -2,10 +2,12 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  OnModuleInit,
 } from "@nestjs/common";
 import { Types, QueryFilter } from "mongoose";
 import { DatabaseService } from "../database/database.service";
 import {
+  KnowledgeChunkSection,
   KnowledgeChunksDocument,
   KnowledgeChunksEntity,
   KnowledgeChunksType,
@@ -13,9 +15,14 @@ import {
 } from "../database/models/knowledge-chunks.entity";
 import { CreateKnowledgeChunksDto } from "./dto/create-knowledge-chunks.dto";
 import { UpdateKnowledgeChunksDto } from "./dto/update-knowledge-chunks.dto";
+import {
+  isMongoObjectIdString,
+  slugifyTitle,
+} from "./knowledge-slug.util";
+import { ArticleTranslationService } from "./article-translation.service";
 
 export type PaginatedKnowledgeChunks = {
-  data: KnowledgeChunksDocument[];
+  data: Record<string, unknown>[];
   total: number;
   page: number;
   limit: number;
@@ -33,13 +40,118 @@ export type TableOfContentsResponse = {
 };
 
 @Injectable()
-export class KnowledgeChunksService {
-  constructor(private readonly databaseService: DatabaseService) {}
+export class KnowledgeChunksService implements OnModuleInit {
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly articleTranslation: ArticleTranslationService,
+  ) {}
+
+  async onModuleInit() {
+    await this.backfillMissingSlugs().catch(() => undefined);
+  }
+
+  private async allocateUniqueSlug(
+    base: string,
+    excludeId?: Types.ObjectId,
+  ): Promise<string> {
+    const root = base.length > 0 ? base : "article";
+    let candidate = root;
+    let suffix = 0;
+    for (;;) {
+      const existing = await this.databaseService.knowledgeChunksModel
+        .findOne({ slug: candidate })
+        .exec();
+      if (
+        !existing ||
+        (excludeId && (existing._id as Types.ObjectId).equals(excludeId))
+      ) {
+        return candidate;
+      }
+      suffix += 1;
+      candidate = `${root}-${suffix}`;
+    }
+  }
+
+  private async backfillMissingSlugs(): Promise<void> {
+    const cursor = this.databaseService.knowledgeChunksModel
+      .find({
+        $or: [
+          { slug: { $exists: false } },
+          { slug: null },
+          { slug: "" },
+        ],
+      })
+      .cursor();
+    for await (const doc of cursor) {
+      try {
+        const id = doc._id as Types.ObjectId;
+        const base = slugifyTitle(doc.title ?? "article");
+        doc.slug = await this.allocateUniqueSlug(base, id);
+        await doc.save();
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  private async findDocumentByIdOrSlug(
+    param: string,
+  ): Promise<KnowledgeChunksDocument | null> {
+    if (isMongoObjectIdString(param)) {
+      const byId = await this.databaseService.knowledgeChunksModel
+        .findById(param)
+        .exec();
+      if (byId) {
+        return byId;
+      }
+      return this.databaseService.knowledgeChunksModel
+        .findOne({ slug: param })
+        .exec();
+    }
+    return this.databaseService.knowledgeChunksModel
+      .findOne({ slug: param })
+      .exec();
+  }
 
   private categoryPlacementFilter(categoryId: Types.ObjectId) {
     return {
       $or: [{ categoryId }, { categoryIds: categoryId }],
     } as QueryFilter<KnowledgeChunksDocument>;
+  }
+
+  private stripLocales<T extends Record<string, unknown>>(row: T): Omit<T, "locales"> {
+    const { locales: _l, ...rest } = row;
+    return rest as Omit<T, "locales">;
+  }
+
+  private mapListRowForLocale(
+    doc: KnowledgeChunksDocument,
+    locale: "en" | "ar" | "ur",
+  ): Record<string, unknown> {
+    const plain = doc.toObject() as unknown as Record<string, unknown> & {
+      locales?: {
+        ar?: { title?: string; content?: string };
+        ur?: { title?: string; content?: string };
+      };
+    };
+    if (locale === "en") {
+      return { ...this.stripLocales(plain), locale: "en" };
+    }
+    const variant = plain.locales?.[locale];
+    const has =
+      variant &&
+      (String(variant.title ?? "").trim() ||
+        String(variant.content ?? "").trim());
+    const base = this.stripLocales(plain);
+    return {
+      ...base,
+      title:
+        has && String(variant!.title ?? "").trim()
+          ? variant!.title
+          : plain.title,
+      locale: has ? locale : "en",
+      titleFallback: !has,
+    };
   }
 
   async findAll(
@@ -48,7 +160,14 @@ export class KnowledgeChunksService {
     limit = 50,
     type?: KnowledgeChunksType,
     search?: string,
-  ): Promise<PaginatedKnowledgeChunks> {
+    listLocale: "en" | "ar" | "ur" = "en",
+  ): Promise<{
+    data: Record<string, unknown>[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
     const mongoQuery: QueryFilter<KnowledgeChunksDocument> = {};
 
     if (categoryId) {
@@ -76,7 +195,8 @@ export class KnowledgeChunksService {
     ]);
 
     const totalPages = Math.max(1, Math.ceil(total / limit));
-    return { data, total, page, limit, totalPages };
+    const mapped = data.map((d) => this.mapListRowForLocale(d, listLocale));
+    return { data: mapped, total, page, limit, totalPages };
   }
 
   async findAllForIngest(): Promise<KnowledgeChunksDocument[]> {
@@ -90,16 +210,130 @@ export class KnowledgeChunksService {
     return this.databaseService.knowledgeChunksModel.findById(id).exec();
   }
 
-  async findOneOrFail(id: string): Promise<KnowledgeChunksDocument> {
-    const doc = await this.findOne(id);
+  async findOneOrFail(idOrSlug: string): Promise<KnowledgeChunksDocument> {
+    const doc = await this.findDocumentByIdOrSlug(idOrSlug);
     if (!doc) {
       throw new NotFoundException("Knowledge chunk not found");
     }
     return doc;
   }
 
-  async getTableOfContents(id: string): Promise<TableOfContentsResponse> {
+  async findOneRawForAdmin(idOrSlug: string): Promise<Record<string, unknown>> {
+    const doc = await this.findOneOrFail(idOrSlug);
+    return doc.toObject() as unknown as Record<string, unknown>;
+  }
+
+  async findOnePublic(
+    idOrSlug: string,
+    locale?: string,
+  ): Promise<Record<string, unknown>> {
+    const doc = await this.findOneOrFail(idOrSlug);
+    const loc =
+      locale === "ar" || locale === "ur"
+        ? locale
+        : ("en" as const);
+    const plain = doc.toObject() as unknown as Record<string, unknown> & {
+      locales?: {
+        ar?: {
+          title?: string;
+          content?: string;
+          sections?: KnowledgeChunkSection[];
+          seo?: Record<string, unknown>;
+        };
+        ur?: {
+          title?: string;
+          content?: string;
+          sections?: KnowledgeChunkSection[];
+          seo?: Record<string, unknown>;
+        };
+      };
+    };
+    if (loc === "en") {
+      return { ...this.stripLocales(plain), locale: "en" };
+    }
+    const variant = plain.locales?.[loc];
+    const has =
+      variant &&
+      (String(variant.title ?? "").trim() ||
+        String(variant.content ?? "").trim());
+    if (!has) {
+      return {
+        ...this.stripLocales(plain),
+        locale: "en",
+        requestedLocale: loc,
+        contentFallback: true,
+      };
+    }
+    return this.stripLocales({
+      ...plain,
+      title: variant!.title || plain.title,
+      content: variant!.content || plain.content,
+      sections:
+        variant!.sections?.length ? variant!.sections : plain.sections,
+      seo: { ...(plain.seo as object), ...(variant!.seo ?? {}) },
+      locale: loc,
+      contentFallback: false,
+    });
+  }
+
+  private async translateSectionsForLocale(
+    sections: KnowledgeChunkSection[],
+    target: "ar" | "ur",
+  ): Promise<KnowledgeChunkSection[]> {
+    const out: KnowledgeChunkSection[] = [];
+    for (const s of sections) {
+      const title = await this.articleTranslation.translatePlain(
+        s.title,
+        target,
+      );
+      const content =
+        s.content?.trim()
+          ? await this.articleTranslation.translateHtml(s.content, target)
+          : undefined;
+      out.push({
+        slug: s.slug,
+        title,
+        order: s.order,
+        level: s.level ?? 2,
+        content,
+      });
+    }
+    return out;
+  }
+
+  async translateFromEnglish(
+    id: string,
+    targets: ("ar" | "ur")[],
+  ): Promise<Record<string, unknown>> {
     const doc = await this.findOneOrFail(id);
+    if (doc.type !== KnowledgeChunksType.BLOG) {
+      throw new BadRequestException("Only blog articles support translations");
+    }
+    const title = doc.title;
+    const content = doc.content;
+    if (!title?.trim() || !content?.trim()) {
+      throw new BadRequestException("English title and content are required");
+    }
+    for (const target of targets) {
+      const [tTitle, tContent, tSeo, tSections] = await Promise.all([
+        this.articleTranslation.translatePlain(title, target),
+        this.articleTranslation.translateHtml(content, target),
+        this.articleTranslation.translateSeo(doc.seo, target),
+        this.translateSectionsForLocale(doc.sections ?? [], target),
+      ]);
+      doc.set(`locales.${target}`, {
+        title: tTitle,
+        content: tContent,
+        sections: tSections,
+        seo: tSeo ?? undefined,
+      });
+    }
+    await doc.save();
+    return doc.toObject() as unknown as Record<string, unknown>;
+  }
+
+  async getTableOfContents(idOrSlug: string): Promise<TableOfContentsResponse> {
+    const doc = await this.findOneOrFail(idOrSlug);
     const list = (doc.sections ?? [])
       .slice()
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -161,8 +395,18 @@ export class KnowledgeChunksService {
       this.normalizeCreateCategories(dto);
     await this.assertCategoriesExist(categoryIds);
 
-    const { categoryId: _c, categoryIds: _ids, primaryCategoryId: _p, ...rest } =
-      dto;
+    const {
+      slug: slugInput,
+      categoryId: _c,
+      categoryIds: _ids,
+      primaryCategoryId: _p,
+      ...rest
+    } = dto;
+    const base =
+      slugInput?.trim().length > 0
+        ? slugInput.trim()
+        : slugifyTitle(dto.title);
+    const slug = await this.allocateUniqueSlug(base);
     const sections = (dto.sections ?? []).map((s) => ({
       slug: s.slug,
       title: s.title,
@@ -180,6 +424,7 @@ export class KnowledgeChunksService {
 
     return this.databaseService.knowledgeChunksModel.create({
       ...rest,
+      slug,
       categoryIds,
       primaryCategoryId,
       categoryId,
@@ -228,10 +473,77 @@ export class KnowledgeChunksService {
     return { categoryIds, primaryCategoryId };
   }
 
+  private assertNotSharedFieldsOnLocalePatch(dto: UpdateKnowledgeChunksDto) {
+    if (
+      dto.categoryId !== undefined ||
+      dto.categoryIds !== undefined ||
+      dto.primaryCategoryId !== undefined ||
+      dto.tags !== undefined ||
+      dto.media !== undefined ||
+      dto.url !== undefined ||
+      dto.type !== undefined ||
+      dto.slug !== undefined
+    ) {
+      throw new BadRequestException(
+        "Categories, tags, media, URL, type and slug can only be edited on the English version",
+      );
+    }
+  }
+
+  private async updateLocaleOnly(
+    id: string,
+    locale: "ar" | "ur",
+    dto: UpdateKnowledgeChunksDto,
+  ): Promise<KnowledgeChunksDocument> {
+    this.assertNotSharedFieldsOnLocalePatch(dto);
+    const doc = await this.databaseService.knowledgeChunksModel
+      .findById(id)
+      .exec();
+    if (!doc) {
+      throw new NotFoundException("Knowledge chunk not found");
+    }
+    if (!doc.locales) {
+      doc.locales = {} as NonNullable<KnowledgeChunksDocument["locales"]>;
+    }
+    const locs = doc.locales;
+    const prev = locs[locale] ?? {
+      title: "",
+      content: "",
+      sections: [],
+    };
+    if (dto.title !== undefined) {
+      prev.title = dto.title;
+    }
+    if (dto.content !== undefined) {
+      prev.content = dto.content;
+    }
+    if (dto.sections !== undefined) {
+      prev.sections = dto.sections.map((s) => ({
+        slug: s.slug,
+        title: s.title,
+        order: s.order,
+        level: s.level ?? 2,
+        content: s.content,
+      }));
+    }
+    if (dto.seo !== undefined) {
+      prev.seo = { ...prev.seo, ...dto.seo };
+    }
+    locs[locale] = prev;
+    doc.markModified("locales");
+    await doc.save();
+    return doc;
+  }
+
   async update(
     id: string,
     dto: UpdateKnowledgeChunksDto,
+    locale?: string,
   ): Promise<KnowledgeChunksDocument> {
+    if (locale === "ar" || locale === "ur") {
+      return this.updateLocaleOnly(id, locale, dto);
+    }
+
     const doc = await this.databaseService.knowledgeChunksModel
       .findById(id)
       .exec();
@@ -253,6 +565,17 @@ export class KnowledgeChunksService {
 
     if (dto.title !== undefined) {
       doc.title = dto.title;
+    }
+    if (dto.slug !== undefined) {
+      const t = dto.slug.trim();
+      if (t.length === 0) {
+        doc.slug = await this.allocateUniqueSlug(
+          slugifyTitle(doc.title),
+          doc._id as Types.ObjectId,
+        );
+      } else {
+        doc.slug = await this.allocateUniqueSlug(t, doc._id as Types.ObjectId);
+      }
     }
     if (dto.url !== undefined) {
       doc.url = dto.url;

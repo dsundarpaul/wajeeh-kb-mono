@@ -1,4 +1,4 @@
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   IsArray,
   IsEnum,
@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  Matches,
   ValidateNested,
 } from "class-validator";
 import {
@@ -20,6 +21,14 @@ export class CreateKnowledgeChunksDto {
   @IsString()
   @IsNotEmpty()
   title: string;
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === "string" && !value.trim() ? undefined : value,
+  )
+  @IsString()
+  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  slug?: string;
 
   @IsString()
   @IsNotEmpty()

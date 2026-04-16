@@ -74,10 +74,44 @@ export class KnowledgeChunkSeo {
 export const KnowledgeChunkSeoSchema =
   SchemaFactory.createForClass(KnowledgeChunkSeo);
 
+@Schema({ _id: false })
+export class KnowledgeChunkLocaleVariant {
+  @Prop({ type: String, default: "" })
+  title: string;
+
+  @Prop({ type: String, default: "" })
+  content: string;
+
+  @Prop({ type: [KnowledgeChunkSectionSchema], default: [] })
+  sections: KnowledgeChunkSection[];
+
+  @Prop({ type: KnowledgeChunkSeoSchema, required: false })
+  seo?: KnowledgeChunkSeo;
+}
+
+export const KnowledgeChunkLocaleVariantSchema = SchemaFactory.createForClass(
+  KnowledgeChunkLocaleVariant,
+);
+
+@Schema({ _id: false })
+export class KnowledgeChunkLocales {
+  @Prop({ type: KnowledgeChunkLocaleVariantSchema, required: false })
+  ar?: KnowledgeChunkLocaleVariant;
+
+  @Prop({ type: KnowledgeChunkLocaleVariantSchema, required: false })
+  ur?: KnowledgeChunkLocaleVariant;
+}
+
+export const KnowledgeChunkLocalesSchema =
+  SchemaFactory.createForClass(KnowledgeChunkLocales);
+
 @Schema({ timestamps: true })
 export class KnowledgeChunksEntity {
   @Prop({ required: true })
   title: string;
+
+  @Prop({ type: String, trim: true })
+  slug?: string;
 
   @Prop({ required: true, type: String })
   url: string;
@@ -109,6 +143,9 @@ export class KnowledgeChunksEntity {
   @Prop({ type: KnowledgeChunkSeoSchema, required: false })
   seo?: KnowledgeChunkSeo;
 
+  @Prop({ type: KnowledgeChunkLocalesSchema, required: false })
+  locales?: KnowledgeChunkLocales;
+
   @Prop({ type: Boolean, default: false })
   isIndexed: boolean;
 }
@@ -119,6 +156,7 @@ export const KnowledgeChunksSchema =
 KnowledgeChunksSchema.index({ categoryId: 1, type: 1, createdAt: -1 });
 KnowledgeChunksSchema.index({ categoryIds: 1, type: 1, createdAt: -1 });
 KnowledgeChunksSchema.index({ primaryCategoryId: 1 });
+KnowledgeChunksSchema.index({ slug: 1 }, { unique: true, sparse: true });
 
 export function resolveCategoryIds(doc: {
   categoryIds?: Types.ObjectId[] | null;
